@@ -1,0 +1,66 @@
+version: '3'
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: job-scraper-app
+    restart: unless-stopped
+    networks:
+      - scraper_network
+    ports:
+      - '3078:3000'
+    depends_on:
+      - mongodb
+#        condition: service_healthy
+#    environment:
+#      - MONGODB_URI=mongodb://admin:admin@mongodb:27017/scraper_app?authSource=admin
+#      - OPENAI_API_KEY=your_openai_api_key
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - '27017:27017'
+    environment:
+      - MONGO_INITDB_DATABASE=scraper_app
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=admin
+    volumes:
+      - ./mongodb:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js
+    networks:
+      - scraper_network
+#    healthcheck:
+#      test: echo 'db.runCommand("ping").ok' | mongo admin --quiet
+#      interval: 10s
+#      timeout: 5s
+#      retries: 5
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongo-express
+    restart: always
+    ports:
+      - '8082:8081'
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=admin
+      - ME_CONFIG_MONGODB_SERVER=mongodb
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=admin
+    networks:
+      - scraper_network
+    depends_on:
+      - mongodb
+#        condition: service_healthy
+
+volumes:
+  mongo-data:
+    driver: local
+
+networks:
+  scraper_network:
+    driver: bridge
